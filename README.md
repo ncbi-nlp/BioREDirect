@@ -95,7 +95,7 @@ bash scripts/run_test_pred.sh
 ```
 @article{lai2023biorex,
   author  = {Lai, Po-Ting and Wei, Chih-Hsuan and Tian, Shubo and Leaman, Robert and Lu, Zhiyong},
-  title   = {BioREx: Improving Biomedical Relation Extraction by Leveraging Heterogeneous Datasets},
+  title   = {Enhancing Biomedical Relation Extraction with Directionality},
   year    = {2025},
 }
 ```
