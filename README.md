@@ -1,4 +1,4 @@
-# bioredirect
+# BioREDirect
 
 This project focuses on extending the capabilities of BioREx model through prompt tuning for enhanced performance on BioRED relation extraction task.
 
@@ -15,10 +15,10 @@ These instructions will guide you through setting up and running the project on 
 
 Open a terminal or Anaconda Prompt and create a new environment:
 
-    ```bash
-    conda create -n bioredirect python=3.10
-    conda activate bioredirect
-    ```
+```bash
+conda create -n bioredirect python=3.10
+conda activate bioredirect
+```
 
 ### Installing Dependencies
 
@@ -48,7 +48,7 @@ You can download [our converted datasets](https://ftp.ncbi.nlm.nih.gov/pub/lu/Bi
 datasets/
 ```
 
-If you want to convert the datasets by yourself, you can use the below script to convert original datasets into our input format.
+(Optional) If you want to convert the datasets by yourself, you can use the below script to convert original datasets into our input format.
 
 ```bash
 bash scripts/build_biored_dataset.sh
