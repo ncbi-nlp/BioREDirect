@@ -1,6 +1,6 @@
 # BioREDirect
 
-This project focuses on extending the capabilities of BioREx model through prompt tuning for enhanced performance on BioRED relation extraction task.
+This project provides the implementation of our work "Enhancing Biomedical Relation Extraction with Directionality"
 
 ## Getting Started
 
@@ -89,11 +89,11 @@ Execute the following script to initiate the prediction process:
 bash scripts/run_test_pred.sh
 ```
 
-## Citing BioREx
+## Citing BioREDirect
 
 * Lai P. T., Wei C. H., Tian S., Robert L. and Lu Z. Enhancing Biomedical Relation Extraction with Directionality. 2025.
 ```
-@article{lai2023biorex,
+@article{lai2025bioredirect,
   author  = {Lai, Po-Ting and Wei, Chih-Hsuan and Tian, Shubo and Leaman, Robert and Lu, Zhiyong},
   title   = {Enhancing Biomedical Relation Extraction with Directionality},
   year    = {2025},
