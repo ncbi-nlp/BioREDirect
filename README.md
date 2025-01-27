@@ -68,7 +68,7 @@ biorex_biolinkbert_pt/
 
 ### Running the BioRED task experiment
 
-To train and evaluate the model, execute script/run_biored_exp.sh
+To train and evaluate the model, execute script/run_biored_bc8_exp.sh
 
 ```bash
 bash scripts/run_biored_bc8_exp.sh
@@ -93,10 +93,14 @@ bash scripts/run_test_pred.sh
 
 * Lai P. T., Wei C. H., Tian S., Robert L. and Lu Z. Enhancing Biomedical Relation Extraction with Directionality. 2025.
 ```
-@article{lai2025bioredirect,
-  author  = {Lai, Po-Ting and Wei, Chih-Hsuan and Tian, Shubo and Leaman, Robert and Lu, Zhiyong},
-  title   = {Enhancing Biomedical Relation Extraction with Directionality},
-  year    = {2025},
+@misc{lai2025enhancingbiomedicalrelationextraction,
+      title={Enhancing Biomedical Relation Extraction with Directionality}, 
+      author={Po-Ting Lai and Chih-Hsuan Wei and Shubo Tian and Robert Leaman and Zhiyong Lu},
+      year={2025},
+      eprint={2501.14079},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2501.14079}, 
 }
 ```
 
