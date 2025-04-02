@@ -688,7 +688,6 @@ def dump_documents_2_instruction_format(
     considered_ne_pairs):
     
     out_writer = open(out_bert_file, 'w', encoding='utf8')
-    out_writer.write('[\n')
     first_record = True
     for document in all_documents:
         pmid = document.id
@@ -704,19 +703,23 @@ def dump_documents_2_instruction_format(
                 if id1 >= id2:
                     continue
                 
-                for (id1, id2) in document.relation_pairs:
-                    print(pmid, id1, id2, document.relation_pairs[(id1, id2)])
+                #for (id1, id2) in document.relation_pairs:
+                #    print(pmid, id1, id2, document.relation_pairs[(id1, id2)])
 
                 re_label, nov_label, subj_id = 'None', 'None', 'None'
                 if (id1, id2) in document.relation_pairs:
-                    _tks = document.relation_pairs[(id1, id2)].split('|')
-                    if len(_tks) == 2:
+                    _tks = document.relation_pairs[(id1, id2)].split('\t')
+                    if len(_tks) == 1:
+                        re_label = _tks[0]
+                    elif len(_tks) == 2:
                         re_label, nov_label = _tks
                     elif len(_tks) == 3:
                         re_label, nov_label, subj_id = _tks
                 elif (id2, id1) in document.relation_pairs:
-                    _tks = document.relation_pairs[(id2, id1)].split('|')
-                    if len(_tks) == 2:
+                    _tks = document.relation_pairs[(id2, id1)].split('\t')
+                    if len(_tks) == 1:
+                        re_label = _tks[0]
+                    elif len(_tks) == 2:
                         re_label, nov_label = _tks
                     elif len(_tks) == 3:
                         re_label, nov_label, subj_id = _tks
@@ -754,6 +757,10 @@ def dump_documents_2_instruction_format(
                                 break
                         if ne_type1_suffix != '':
                             break
+
+                if len(considered_ne_pairs) == 1:
+                    ne_type1_suffix = ''
+                    ne_type2_suffix = ''
                     
                 sents = []
                 ne1_text = ''
@@ -786,31 +793,45 @@ def dump_documents_2_instruction_format(
                     sents.append(''.join(tagged_sent))
                 
                 
-                direction_label = subj_id
-
+                direction_label = 'Rightward' if id1 == subj_id else 'Leftward'
+                if subj_id == 'None' or subj_id == '':
+                    if re_label != 'None':
+                        direction_label = 'No_Direct'
+                    else:
+                        direction_label = 'None'
                 
-                instruction = 'Identify the BioRED relation, direction, and novelty labels for the highlighted pair, ' + ne1_text + ' and ' + ne2_text + '?'
-                content  = ' '.join(sents)
-                response = 'For the highlighted pair ' + ne1_text + ' and ' + ne2_text + ':\n' + 'BioRED relation label: ' + re_label + '\n' + 'Direction label: ' + dir_label + '\n' + 'Novelty label: ' + nov_label
-                
+                if len(considered_ne_pairs) == 1:
+                    # Dataset is BC5CDR
+                    if ne_type1 == 'Chemical':
+                        ne1_text, ne2_text = ne2_text, ne1_text
 
-
-                data = {
-                    "pmid": pmid,
-                    "ne_type1": ne_type1,
-                    "ne_type2": ne_type2,
-                    "id1": id1,
-                    "id2": id2,
-                    "instruction": instruction,
-                    "content": content,
-                    "response": response
-                }
-
-                if not first_record:
-                    out_writer.write(',\n')
+                    instruction = 'Identify the BC5CDR relation label for the highlighted pair, "' + ne1_text + '" and "' + ne2_text + '", and respond in JSON format.'
+                    content  = re.sub(r'\s+', ' ', ' '.join(sents))
+                    #response = 'For the highlighted pair ' + ne1_text + ' and ' + ne2_text + ':\n' + 'BioRED relation label: ' + re_label + '\n' + 'Direction label: ' + dir_label + '\n' + 'Novelty label: ' + nov_label
+                    response = json.dumps({
+                        "relation_label": re_label
+                    })
                 else:
-                    first_record = False
-                json.dump(data, out_writer, ensure_ascii=False, indent=4)
+                    instruction = 'Identify the BioRED relation, direction, and novelty labels for the highlighted pair, "' + ne1_text + '" and "' + ne2_text + '", and respond in JSON format.'
+                    content  = re.sub(r'\s+', ' ', ' '.join(sents))
+                    #response = 'For the highlighted pair ' + ne1_text + ' and ' + ne2_text + ':\n' + 'BioRED relation label: ' + re_label + '\n' + 'Direction label: ' + dir_label + '\n' + 'Novelty label: ' + nov_label
+                    response = json.dumps({
+                        "BioRED_relation_label": re_label,
+                        "direction_label": direction_label,
+                        "novelty_label": nov_label
+                    })
+
+
+                messages = []
+                messages.append({"role": "system", "content": "You are a bioinformatics expert."})
+                messages.append({"role": "user", "content": instruction + "\n" + content})
+                messages.append({"role": "assistant", "content": response})
+                #messages.append({"prompt": instruction + "\n" + content})
+                #messages.append({"completion": response})
+
+                
+                json.dump({"messages": messages}, out_writer, ensure_ascii=False)
+                #json.dump(messages, out_writer, ensure_ascii=False)
+                out_writer.write('\n')
                 out_writer.flush()
-    out_writer.write('\n]')
     out_writer.close()

@@ -42,6 +42,10 @@ parser.add_option('--out_json_dir',                      action="store",
 parser.add_option('--in_bert_model',                    action="store",
                      dest="in_bert_model",              help="input bert model", default="")
 
+
+parser.add_option('--exp_option',                       action="store",
+                     dest="exp_option",                 help="gen_biored_instruction_json, gen_cdr_instruction_json, and gen_cdr_zs_instruction_jsonl etc", default="")
+
 def add_annotations_2_text_instances(text_instances, annotations):
     offset = 0
     for text_instance in text_instances:
@@ -222,7 +226,7 @@ def convert_biored_to_instruction_json_file(
             re_id_spliter_str    = re_id_spliter_str,
             use_novelty_label    = use_novelty_label)
     
-    utils.split_documents(all_documents, tokenizer)
+    #utils.split_documents(all_documents, tokenizer)
 
     utils.dump_documents_2_instruction_format(
         all_documents, 
@@ -255,8 +259,7 @@ def gen_biored_instruction_json_dataset(
         in_pubtator_dir,
         out_json_file,
         out_json_dir,
-        re_id_spliter_str,
-        tokenizer):
+        re_id_spliter_str):
     
     if in_pubtator_dir != '' and out_json_dir != '':
 
@@ -274,7 +277,8 @@ def gen_biored_instruction_json_dataset(
                 re_id_spliter_str = re_id_spliter_str)
     else:
         
-        os.makedirs(os.path.dirname(out_json_file), exist_ok=True)
+        if os.path.dirname(out_json_file) != '':
+            os.makedirs(os.path.dirname(out_json_file), exist_ok=True)
         
         convert_biored_to_instruction_json_file(
             in_pubtator_file  = in_pubtator_file,
@@ -286,8 +290,7 @@ def gen_cdr_instruction_json_dataset(
         in_pubtator_dir,
         out_json_file,
         out_json_dir,
-        re_id_spliter_str,
-        tokenizer):
+        re_id_spliter_str):
     
     if in_pubtator_dir != '' and out_json_dir != '':
 
@@ -311,21 +314,6 @@ def gen_cdr_instruction_json_dataset(
             in_pubtator_file  = in_pubtator_file,
             out_json_file     = out_json_file,
             re_id_spliter_str = re_id_spliter_str)
-
-    '1': 'Association',
-    '2': 'Positive_Correlation',
-    '3': 'Comparison',
-    '4': 'Conversion',
-    '5': 'Cotreatment',
-    '6': 'Drug_Interaction',
-    '7': 'Negative_Correlation',
-    '8': 'Bind',
-    '9': 'Negative_Correlation',
-    '10': 'Positive_Correlation',
-    '11': 'Negative_Correlation',
-    '12': 'Positive_Correlation',
-    '13': 'Negative_Correlation',
-    '14': 'None'}
 
 def gen_biored_zs_instruction_json_dataset(
         in_pubtator_file,
@@ -363,8 +351,7 @@ def gen_cdr_zs_instruction_json_dataset(
         in_pubtator_dir,
         out_json_file,
         out_json_dir,
-        re_id_spliter_str,
-        tokenizer):
+        re_id_spliter_str):
     
     if in_pubtator_dir != '' and out_json_dir != '':
 
@@ -395,13 +382,8 @@ if __name__ == '__main__':
     
     random.seed(1111)
 
-    if in_bert_model != '':
-        tokenizer = BertTokenizer.from_pretrained(options.in_bert_model)
-    else:
-        tokenizer = None
-
     # standard train and dev
-    if exp_option == 'gen_biored_instruction_json':
+    if options.exp_option == 'gen_biored_instruction_json':
         in_pubtator_file  = options.in_pubtator_file
         in_pubtator_dir   = options.in_pubtator_dir
         out_json_file     = options.out_json_file
@@ -413,10 +395,9 @@ if __name__ == '__main__':
             in_pubtator_dir   = in_pubtator_dir,
             out_json_file     = out_json_file,
             out_json_dir      = out_json_dir,
-            re_id_spliter_str = re_id_spliter_str,
-            tokenizer         = tokenizer)
+            re_id_spliter_str = re_id_spliter_str)
 
-    elif exp_option == 'gen_cdr_instruction_json':
+    elif options.exp_option == 'gen_cdr_instruction_json':
         in_pubtator_file  = options.in_pubtator_file
         in_pubtator_dir   = options.in_pubtator_dir
         out_json_file     = options.out_json_file
@@ -428,10 +409,9 @@ if __name__ == '__main__':
             in_pubtator_dir   = in_pubtator_dir,
             out_json_file     = out_json_file,
             out_json_dir      = out_json_dir,
-            re_id_spliter_str = re_id_spliter_str,
-            tokenizer         = tokenizer)
+            re_id_spliter_str = re_id_spliter_str)
 
-    elif exp_option == 'gen_biored_zs_instruction_jsonl':
+    elif options.exp_option == 'gen_biored_zs_instruction_jsonl':
         in_pubtator_file  = options.in_pubtator_file
         in_pubtator_dir   = options.in_pubtator_dir
         out_json_file     = options.out_json_file
@@ -443,10 +423,9 @@ if __name__ == '__main__':
             in_pubtator_dir   = in_pubtator_dir,
             out_json_file     = out_json_file,
             out_json_dir      = out_json_dir,
-            re_id_spliter_str = re_id_spliter_str,
-            tokenizer         = tokenizer)
+            re_id_spliter_str = re_id_spliter_str)
     
-    elif exp_option == 'gen_cdr_zs_instruction_jsonl':
+    elif options.exp_option == 'gen_cdr_zs_instruction_jsonl':
         in_pubtator_file = options.in_pubtator_file
         in_pubtator_dir  = options.in_pubtator_dir
         out_json_file    = options.out_json_file
@@ -458,7 +437,6 @@ if __name__ == '__main__':
             in_pubtator_dir   = in_pubtator_dir,
             out_json_file     = out_json_file,
             out_json_dir      = out_json_dir,
-            re_id_spliter_str = re_id_spliter_str,
-            tokenizer         = tokenizer)
+            re_id_spliter_str = re_id_spliter_str)
 
         
