@@ -2,45 +2,32 @@
 
 This project provides the implementation of our work "Enhancing Biomedical Relation Extraction with Directionality"
 
-## Getting Started
+## Environment
 
-These instructions will guide you through setting up and running the project on your local machine for development and experimentation.
+- GPU: Our experiments were conducted on an Nvidia A100 GPU. BioREDirect was also tested on Nvidia V100 and RTX 3080 GPUs. However, for fine-tuning on these GPUs, a smaller batch size, such as 8 for the V100 and 4 for the RTX 3080, may be required.
+- Python: Python 3.10
+- OS: Linux/Windows WSL2 with Conda
 
-### Prerequisites
+## Installation
 
-- OS: Linux/Windows WSL2 with Anaconda environment
-- GPU: Our experiments were conducted on an Nvidia A100 GPU. Additionally, the model was tested on Nvidia V100 and RTX 3080 GPUs. However, for fine-tuning on these GPUs, a smaller batch size, such as 8 for the V100 and 4 for the RTX 3080, may be required.
-
-### Creating a Conda Environment
-
-Open a terminal or Anaconda Prompt and create a new environment:
+Open a terminal or Anaconda Prompt and create a new environment. Then install Torch-gpu (check the latest from https://pytorch.org/get-started/locally/):
 
 ```bash
 conda create -n bioredirect python=3.10
 conda activate bioredirect
-```
-
-### Installing Dependencies
-
-Install Torch-gpu (check the latest from https://pytorch.org/get-started/locally/):
-
-```bash
 pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu118
+pip install -r requirements.txt
 ```
 
-After installed, please check your GPU availability:
+(Optional) Use the following command to check whether PyTorch can access the GPU after installation.
 
 ```bash
 python src/run_check_torch_gpu.py
 ```
 
-Then install the project dependencies:
+## Train and evaluate BioREDirect
 
-```bash
-pip install -r requirements.txt
-```
-
-### Download the datasets
+### Step 1: Download the datasets
 
 You can download [our converted datasets](https://ftp.ncbi.nlm.nih.gov/pub/lu/BioREDirect/datasets.zip), and unzip it to 
 
@@ -56,7 +43,7 @@ bash scripts/build_biored_dataset.sh
 
 You can change the above script to build_cdr_dataset.sh for the BC5CDR task experiment.
 
-### Download the pre-trained model
+### Step 2: Download the pre-trained model
 
 Please download the model [here](https://ftp.ncbi.nlm.nih.gov/pub/lu/BioREx/biorex_biolinkbert_pt.zip)
 
@@ -66,7 +53,7 @@ Unzip it into
 biorex_biolinkbert_pt/
 ```
 
-### Running the BioRED task experiment
+### Step 3: Running the BioRED task experiment
 
 To train and evaluate the model, execute script/run_biored_bc8_exp.sh
 
@@ -91,16 +78,21 @@ bash scripts/run_test_pred.sh
 
 ## Citing BioREDirect
 
-* Lai P. T., Wei C. H., Tian S., Robert L. and Lu Z. Enhancing Biomedical Relation Extraction with Directionality. 2025.
+* Po-Ting Lai, Chih-Hsuan Wei, Shubo Tian, Robert Leaman, Zhiyong Lu, Enhancing biomedical relation extraction with directionality, Bioinformatics, Volume 41, Issue Supplement_1, July 2025, Pages i68–i76, https://doi.org/10.1093/bioinformatics/btaf226
 ```
-@misc{lai2025enhancingbiomedicalrelationextraction,
-      title={Enhancing Biomedical Relation Extraction with Directionality}, 
-      author={Po-Ting Lai and Chih-Hsuan Wei and Shubo Tian and Robert Leaman and Zhiyong Lu},
-      year={2025},
-      eprint={2501.14079},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2501.14079}, 
+@article{10.1093/bioinformatics/btaf226,
+    author = {Lai, Po-Ting and Wei, Chih-Hsuan and Tian, Shubo and Leaman, Robert and Lu, Zhiyong},
+    title = {Enhancing biomedical relation extraction with directionality},
+    journal = {Bioinformatics},
+    volume = {41},
+    number = {Supplement_1},
+    pages = {i68-i76},
+    year = {2025},
+    month = {07},
+    issn = {1367-4811},
+    doi = {10.1093/bioinformatics/btaf226},
+    url = {https://doi.org/10.1093/bioinformatics/btaf226},
+    eprint = {https://academic.oup.com/bioinformatics/article-pdf/41/Supplement\_1/i68/63745428/btaf226.pdf},
 }
 ```
 
