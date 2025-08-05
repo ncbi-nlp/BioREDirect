@@ -12,17 +12,11 @@ import random
 import glob
 from pathlib import Path
 
-from collections import defaultdict
 
 import re
-import numpy as np
-import json
-
-import sys
 import utils
       
 import optparse
-from transformers import BertTokenizer
 
 
 parser = optparse.OptionParser()

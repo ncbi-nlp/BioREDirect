@@ -5,10 +5,7 @@ Created on Thu Jul 15 14:09:51 2021
 @author: laip2
 """
 import re
-from collections import defaultdict
-from document import PubtatorDocument, TextInstance
-from annotation import AnnotationInfo
-import sys
+from document import TextInstance
 import json
 import logging
 from sentence_spliter import regex_sentence_boundary_gen

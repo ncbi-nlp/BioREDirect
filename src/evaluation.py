@@ -279,6 +279,93 @@ def convert_to_biored_label(relation_label_vectors,
     
     return single_labels
 
+def convert_to_biored_label_with_score(relation_label_vectors, 
+                                       novelty_label_vectors,
+                                       direction_label_vectors,
+                                       relation_label_list,
+                                       novelty_label_list,
+                                       direction_label_list):
+    single_labels = []
+
+    # Define index for 'None' and 'Association' based on their positions in label_list
+    none_index         = relation_label_list.index('None') # 'None' is the same index in relation_label_list, novelty_label_list, and direction_label_list
+    association_index  = relation_label_list.index('Association')
+    pos_index          = relation_label_list.index('Positive_Correlation')
+    neg_index          = relation_label_list.index('Negative_Correlation')
+    conversion_index   = relation_label_list.index('Conversion')
+    novel_index        = novelty_label_list.index('Novel')
+    no_novel_index     = novelty_label_list.index('No')
+    single_labels = []
+    
+    # Define index for 'None' and 'Association' based on their positions in label_list
+    none_index         = relation_label_list.index('None') # 'None' is the same index in relation_label_list, novelty_label_list, and direction_label_list
+    association_index  = relation_label_list.index('Association')
+    pos_index          = relation_label_list.index('Positive_Correlation')
+    neg_index          = relation_label_list.index('Negative_Correlation')
+    conversion_index   = relation_label_list.index('Conversion')
+    novel_index        = novelty_label_list.index('Novel')
+    no_novel_index     = novelty_label_list.index('No')
+    left_2_right_index = direction_label_list.index('Left_to_Right')
+    right_2_left_index = direction_label_list.index('Right_to_Left')
+    no_direct_index    = direction_label_list.index('No_Direct')
+    subject_label      = no_direct_index
+    
+    for relation_label_vector, novelty_label_vector, direction_label_vector in zip(relation_label_vectors, 
+                                                                                   novelty_label_vectors, 
+                                                                                   direction_label_vectors):
+        _rel_score, _nov_score, _dir_score = 0.0, 0.0, 0.0
+        if sum(relation_label_vector) == 0:
+            # If all entries are zero, label is 'None'
+            #single_labels.append('None')
+            single_labels.append((none_index, novel_index, subject_label, _rel_score, _nov_score, _dir_score))
+        else:
+            _novel_label = novel_index
+            _nov_score = novelty_label_vector[novel_index]
+            if novelty_label_vector[novel_index] < novelty_label_vector[no_novel_index]:
+                _novel_label = no_novel_index
+                _nov_score = novelty_label_vector[no_novel_index]
+            
+            _max_score = 0.0
+            subject_label = left_2_right_index
+            if direction_label_vector[left_2_right_index] >= _max_score:
+                _max_score = direction_label_vector[left_2_right_index]
+                subject_label = left_2_right_index
+            if direction_label_vector[right_2_left_index] >= _max_score:
+                _max_score = direction_label_vector[right_2_left_index]
+                subject_label = right_2_left_index   
+            if direction_label_vector[no_direct_index] >= _max_score:
+                _max_score = direction_label_vector[no_direct_index]
+                subject_label = no_direct_index
+            _dir_score = _max_score
+            
+            # Check for any label other than 'None' or 'Association'
+            high_priority_label = None
+
+            max_score = 0.5
+            for i, label_present in enumerate(relation_label_vector):
+                if (label_present > max_score and 
+                    i != none_index and 
+                    i != association_index):                    
+                    high_priority_label = i
+                    max_score = label_present
+            _rel_score = max_score
+            
+            if high_priority_label:
+                single_labels.append((high_priority_label, _novel_label, subject_label, _rel_score, _nov_score, _dir_score))
+            else:
+                # If no label is above the threshold, pick the label with the highest score
+                max_index = none_index
+                max_score = relation_label_vector[none_index]
+                #print(vector)
+                for i, label_present in enumerate(relation_label_vector):
+                    if label_present > max_score:
+                        max_index = i
+                        max_score = label_present
+                _rel_score = max_score
+                single_labels.append((max_index, _novel_label, subject_label, _rel_score, _nov_score, _dir_score))
+    
+    return single_labels
+
 def convert_to_cdr_label(relation_label_vectors):
     single_labels = []
     
