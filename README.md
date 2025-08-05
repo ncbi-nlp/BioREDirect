@@ -1,10 +1,10 @@
-# Updates
-
-Updated BioREDirect to the Python 3.11 version
-
 # BioREDirect
 
 This project provides the implementation of our work "Enhancing Biomedical Relation Extraction with Directionality"
+
+## Updates
+
+Updated BioREDirect to the Python 3.11 version
 
 ## Environment
 
