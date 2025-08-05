@@ -1,6 +1,6 @@
 # Updates
 
-Updated BioREx to the Python 3.11 version
+Updated BioREDirect to the Python 3.11 version
 
 # BioREDirect
 
