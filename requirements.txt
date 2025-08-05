@@ -1,13 +1,8 @@
-transformers == 4.45.2
-accelerate == 1.0.1
-pandas == 2.2.3
-gguf == 0.10.0
-bitsandbytes == 0.44.1
-scispacy == 0.5.4
-https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz
+transformers == 4.55.0
+accelerate == 1.9.0
+pandas == 2.3.0
 sentencepiece == 0.2.0
-protobuf == 5.28.2
-trl == 0.11.4
-datasets == 3.0.1
-peft == 0.13.2
-tqdm == 4.66.5
+protobuf == 6.31.1
+trl == 0.21.0
+datasets == 4.0.0
+tqdm == 4.67.1

@@ -1,3 +1,7 @@
+# Updates
+
+Updated BioREx to the Python 3.11 version
+
 # BioREDirect
 
 This project provides the implementation of our work "Enhancing Biomedical Relation Extraction with Directionality"
@@ -5,7 +9,7 @@ This project provides the implementation of our work "Enhancing Biomedical Relat
 ## Environment
 
 - GPU: Our experiments were conducted on an Nvidia A100 GPU. BioREDirect was also tested on Nvidia V100 and RTX 3080 GPUs. However, for fine-tuning on these GPUs, a smaller batch size, such as 8 for the V100 and 4 for the RTX 3080, may be required.
-- Python: Python 3.10
+- Python: Python 3.11
 - OS: Linux/Windows WSL2 with Conda
 
 ## Installation
@@ -13,9 +17,9 @@ This project provides the implementation of our work "Enhancing Biomedical Relat
 Open a terminal or Anaconda Prompt and create a new environment. Then install Torch-gpu (check the latest from https://pytorch.org/get-started/locally/):
 
 ```bash
-conda create -n bioredirect python=3.10
+conda create -n bioredirect python=3.11
 conda activate bioredirect
-pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu118
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 pip install -r requirements.txt
 ```
 
