@@ -108,14 +108,23 @@ def run_train(in_bert_model,
 
     # Create DataLoaders
     none_label_index = train_dataset.get_label_2_id('relation')['None']
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=custom_collate_fn, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, 
+                                  batch_size  = batch_size, 
+                                  collate_fn  = custom_collate_fn, 
+                                  shuffle     = True,
+                                  num_workers = 10, 
+                                  pin_memory  = (device.type == 'cuda'))
 
     if in_dev_tsv_file != '':
         dev_dataset    = dataset_processor(in_dev_tsv_file,
                                            tokenizer,
                                            max_seq_len     = max_seq_len,
                                            soft_prompt_len = soft_prompt_len)
-        dev_dataloader = DataLoader(dev_dataset,   batch_size=batch_size, collate_fn=custom_collate_fn)
+        dev_dataloader = DataLoader(dev_dataset,   
+                                    batch_size  = batch_size, 
+                                    collate_fn  = custom_collate_fn,
+                                    num_workers = 10, 
+                                    pin_memory  = (device.type == 'cuda'))
     else:
         dev_dataloader = None
         
@@ -370,7 +379,6 @@ if __name__ == '__main__':
     is_multi_label        = args.is_multi_label
     balance_ratio         = args.balance_ratio
     no_eval               = args.no_eval
-    fast_inference        = args.fast_inference
 
     print('================>args.no_eval', args.no_eval)
 
