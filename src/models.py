@@ -18,12 +18,31 @@ class HiddenTokenPooler(nn.Module):
         self.activation = nn.Tanh()
 
     def forward(self, hidden_states, token_index=0):
-        # Get the hidden state of the specified token
-        token_hidden_state = hidden_states[:, token_index, :]  # Shape: (batch_size, hidden_size)
-        # Apply the dense layer
-        dense_output = self.dense(token_hidden_state)
-        # Apply the Tanh activation function
-        pooled_output = self.activation(dense_output)
+        # hidden_states: (B, N, T, H)
+        # token_index: int or (B,) or (B, 1)
+        B, N, T, H = hidden_states.shape
+
+        # 處理 token_index 的型別與 shape
+        if isinstance(token_index, int):
+            token_index = torch.full((B,), token_index, dtype=torch.long, device=hidden_states.device)
+        elif isinstance(token_index, list):
+            token_index = torch.tensor(token_index, dtype=torch.long, device=hidden_states.device)
+        elif token_index.dim() == 2 and token_index.size(1) == 1:
+            token_index = token_index.squeeze(1)
+
+        # token_index: (B,) → (B, N) 重複每個句子
+        token_index = token_index.unsqueeze(1).expand(B, N)  # (B, N)
+
+        # 構造 batch 和句子 index
+        batch_idx = torch.arange(B, device=hidden_states.device).unsqueeze(1).expand(B, N)  # (B, N)
+        sent_idx  = torch.arange(N, device=hidden_states.device).unsqueeze(0).expand(B, N)  # (B, N)
+
+        # 選出指定位置的 token embedding → (B, N, H)
+        token_hidden_state = hidden_states[batch_idx, sent_idx, token_index]  # (B, N, H)
+
+        # dense + tanh
+        dense_output = self.dense(token_hidden_state)  # (B, N, H)
+        pooled_output = self.activation(dense_output)  # (B, N, H)
         return pooled_output
 
 class BioREDirect(nn.Module):
@@ -87,9 +106,9 @@ class BioREDirect(nn.Module):
                 start_token_idx, current_end_index = index[0], index[-1]
                 # Update the sentence index if the token is a separator token
                 for i in range(start_token_idx, current_end_index+1):
-                    ne_reps.append(sequence_output[batch_idx][i].clone().detach())
+                    ne_reps.append(sequence_output[batch_idx][i])
             if len(ne_reps) == 0:
-                all_ne_reps.append(sequence_output[batch_idx][0].clone().detach())
+                all_ne_reps.append(sequence_output[batch_idx][0])
             else:
                 ne_rep_tensor = torch.stack(ne_reps)
                 #max_value, _ = torch.max(ne_rep_tensor, dim=0)
@@ -108,10 +127,10 @@ class BioREDirect(nn.Module):
             token_reps = []
             for index in _token_indices:
                 # Update the sentence index if the token is a separator token
-                token_reps.append(sequence_output[batch_idx][index].clone().detach())
+                token_reps.append(sequence_output[batch_idx][index])
             if len(token_reps) == 0:
                 #all_ne_reps.append(torch.tensor(sequence_output[batch_idx][0]))
-                all_token_reps.append(sequence_output[batch_idx][0].clone().detach())
+                all_token_reps.append(sequence_output[batch_idx][0])
             else:
                 token_rep_tensor = torch.stack(token_reps)
                 attention_weights = torch.softmax(torch.matmul(token_rep_tensor, token_rep_tensor.transpose(-1, -2)), dim=-1)            
@@ -128,15 +147,15 @@ class BioREDirect(nn.Module):
             all_token_reps.append(_sequence_output[special_token_index].clone().detach())
         return all_token_reps
 
-    def forward(self, 
+    '''def forward(self, 
                 input_ids, 
                 attention_mask        = None, 
-                entity1_indices       = None,
-                entity2_indices       = None,
-                entity1_sent_ids      = None,
-                entity2_sent_ids      = None,
+                #entity1_indices       = None,
+                #entity2_indices       = None,
+                #entity1_sent_ids      = None,
+                #entity2_sent_ids      = None,
                 pair_prompt_ids       = None,
-                sent_ids              = None,
+                #sent_ids              = None,
                 relation_token_index  = None,
                 direction_token_index = None,
                 novelty_token_index   = None):
@@ -199,7 +218,60 @@ class BioREDirect(nn.Module):
         rel_token_logits = torch.stack(rel_token_logits)
         nov_token_logits = torch.stack(nov_token_logits)
         dir_token_logits = torch.stack(dir_token_logits)
-        return rel_token_logits, nov_token_logits, dir_token_logits
+        return rel_token_logits, nov_token_logits, dir_token_logits'''
+    
+    def forward(self, 
+                input_ids, 
+                attention_mask        = None, 
+                pair_prompt_ids       = None,
+                relation_token_index  = None,
+                direction_token_index = None,
+                novelty_token_index   = None):
+
+        batch_size, num_chunks, seq_len = input_ids.size()
+        input_ids = input_ids.view(-1, seq_len)            # (B*3, T)
+        pair_prompt_ids = pair_prompt_ids.view(-1)         # (B*3,)
+
+        # === Soft prompt embedding concat ===
+        input_embeddings = self.bert_model.embeddings.word_embeddings(input_ids)  # (B*3, T, H)
+
+        if self.soft_prompt_len > 0:
+            prompt_embeddings_flat = self.soft_prompt(pair_prompt_ids)
+            prompt_embeddings = prompt_embeddings_flat.view(-1, self.soft_prompt_len, self.hidden_size)
+            embeddings = torch.cat([input_embeddings, prompt_embeddings], dim=1)
+        else:
+            embeddings = input_embeddings
+
+        attention_mask = attention_mask.view(-1, attention_mask.size(-1))  # (B*3, T)
+
+        outputs = self.bert_model(inputs_embeds  = embeddings, 
+                                  attention_mask = attention_mask)
+        
+        sequence_output = outputs[0]
+        sequence_output = sequence_output.view(batch_size, num_chunks, -1, self.hidden_size)
+
+        # === Special token index reshape ===
+        relation_token_index  = relation_token_index.view(-1)
+        direction_token_index = direction_token_index.view(-1) if direction_token_index is not None else None
+        novelty_token_index   = novelty_token_index.view(-1)   if novelty_token_index is not None else None
+
+        pooled_relation_token_output  = self.rel_token_poolor(sequence_output, relation_token_index)
+        pooled_direction_token_output = self.dir_token_poolor(sequence_output, direction_token_index) if self.dir_token_poolor and direction_token_index is not None else None
+        pooled_novelty_token_output   = self.nov_token_poolor(sequence_output, novelty_token_index)   if self.nov_token_poolor and novelty_token_index is not None else None
+
+        pooled_relation_token_output  = pooled_relation_token_output.view(batch_size, num_chunks, -1)  # (B, 3, H)
+        pooled_direction_token_output = pooled_direction_token_output.view(batch_size, num_chunks, -1) if pooled_direction_token_output is not None else None
+        pooled_novelty_token_output   = pooled_novelty_token_output.view(batch_size, num_chunks, -1) if pooled_novelty_token_output is not None else None
+        
+        max_pooled_rel_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_relation_token_output, pooled_relation_token_output.transpose(-1, -2)), dim=-1), pooled_relation_token_output)[:, 0, :]
+        max_pooled_dir_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_direction_token_output, pooled_direction_token_output.transpose(-1, -2)), dim=-1), pooled_direction_token_output)[:, 0, :] if pooled_direction_token_output is not None else None
+        max_pooled_nov_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_novelty_token_output, pooled_novelty_token_output.transpose(-1, -2)), dim=-1), pooled_novelty_token_output)[:, 0, :] if pooled_novelty_token_output is not None else None
+
+        rel_logits = self.rel_token_classifier(max_pooled_rel_token_output) 
+        dir_logits = self.dir_token_classifier(max_pooled_dir_token_output) if max_pooled_dir_token_output is not None else None
+        nov_logits = self.nov_token_classifier(max_pooled_nov_token_output) if max_pooled_nov_token_output is not None else None
+
+        return rel_logits, nov_logits, dir_logits
     
     def resize_token_embeddings(self, new_num_tokens):
         self.bert_model.resize_token_embeddings(new_num_tokens)
@@ -239,8 +311,13 @@ class BioREDirect(nn.Module):
     def load_model(cls, model_path):
         """Loads the BioREDirect model and its state from a saved file."""
 
+        if torch.backends.mps.is_available():
+            device = torch.device("mps")
+        else:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # Load the saved data
-        saved_data = torch.load(model_path + '/out_bioredirect_model.pth', weights_only = True)
+        saved_data = torch.load(model_path + '/out_bioredirect_model.pth', map_location = device, weights_only = True)
         
         # Determine if a GPU is available, default to 'cpu'
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

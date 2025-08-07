@@ -408,19 +408,19 @@ def evaluate_biored_f1_score(model,
             
             #if i == 20:
             #    break
-            gold_rel_labels = batch['relation_labels'].cpu().numpy()  # True labels
-            gold_nov_labels = batch['novelty_labels'].cpu().numpy()
-            gold_dir_labels = batch['direction_labels'].cpu().numpy()
+            gold_rel_labels = batch['relation_labels'].numpy() if batch['relation_labels'].device.type == 'cpu' else batch['relation_labels'].cpu().numpy()
+            gold_nov_labels = batch['novelty_labels'].numpy() if batch['novelty_labels'].device.type == 'cpu' else batch['novelty_labels'].cpu().numpy()
+            gold_dir_labels = batch['direction_labels'].numpy() if batch['direction_labels'].device.type == 'cpu' else batch['direction_labels'].cpu().numpy()
             (rel_token_outputs, 
              nov_token_outputs, 
              dir_token_outputs) = model(input_ids             = batch['input_ids'].to(device), 
                                         attention_mask        = batch['attention_mask'].to(device), 
-                                        entity1_indices       = batch['entity1_indices'],
-                                        entity2_indices       = batch['entity2_indices'],
-                                        entity1_sent_ids      = batch['entity1_sent_ids'],
-                                        entity2_sent_ids      = batch['entity2_sent_ids'],
+                                        #entity1_indices       = batch['entity1_indices'],
+                                        #entity2_indices       = batch['entity2_indices'],
+                                        #entity1_sent_ids      = batch['entity1_sent_ids'],
+                                        #entity2_sent_ids      = batch['entity2_sent_ids'],
                                         pair_prompt_ids       = batch['pair_prompt_ids'].to(device), 
-                                        sent_ids              = batch['sent_ids'],
+                                        #sent_ids              = batch['sent_ids'],
                                         relation_token_index  = batch['relation_token_index'],
                                         direction_token_index = batch['direction_token_index'],
                                         novelty_token_index   = batch['novelty_token_index'])
@@ -562,12 +562,12 @@ def evaluate_cdr_f1_score(model,
             gold_rel_labels = batch['relation_labels'].cpu().numpy()  # True labels
             (rel_token_outputs, _, _) = model(input_ids             = batch['input_ids'].to(device), 
                                               attention_mask        = batch['attention_mask'].to(device), 
-                                              entity1_indices       = batch['entity1_indices'],
-                                              entity2_indices       = batch['entity2_indices'],
-                                              entity1_sent_ids      = batch['entity1_sent_ids'],
-                                              entity2_sent_ids      = batch['entity2_sent_ids'],
+                                              #entity1_indices       = batch['entity1_indices'],
+                                              #entity2_indices       = batch['entity2_indices'],
+                                              #entity1_sent_ids      = batch['entity1_sent_ids'],
+                                              #entity2_sent_ids      = batch['entity2_sent_ids'],
                                               pair_prompt_ids       = batch['pair_prompt_ids'].to(device), 
-                                              sent_ids              = batch['sent_ids'],
+                                              #sent_ids              = batch['sent_ids'],
                                               relation_token_index  = batch['relation_token_index'],
                                               direction_token_index = batch['direction_token_index'],
                                               novelty_token_index   = batch['novelty_token_index'])

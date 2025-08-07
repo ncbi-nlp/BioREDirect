@@ -16,6 +16,8 @@ from torch.utils.data import DataLoader
 from data_processor import BioREDDataset
 from dataset_format_converter.convert_bioc_2_tsv import load_bioc_into_documents
 from dataset_format_converter.convert_bioc_2_pubtator3 import dump_documents_2_xml_with_instance
+from dataset_format_converter.convert_pubtator_2_tsv import load_pubtator_into_documents
+from dataset_format_converter.convert_pubtator_2_pubtator3 import dump_documents_2_pubtator3
 from dataset_format_converter.utils import split_documents, dump_documents_2_bioredirect_format
 from evaluation import convert_to_biored_label_with_score
 from models import BioREDirect
@@ -41,15 +43,15 @@ class RelInfo:
 
 def custom_collate_fn(batch):
     pmid             = [item['pmid'] for item in batch]
-    input_ids        = torch.stack([torch.tensor(item['input_ids']) for item in batch])
-    attention_mask   = torch.stack([torch.tensor(item['attention_mask']) for item in batch])
+    input_ids        = torch.stack([item['input_ids'] for item in batch])
+    attention_mask   = torch.stack([item['attention_mask'] for item in batch])
     relation_labels  = torch.stack([item['relation_labels'] for item in batch])
     novelty_labels   = torch.stack([item['novelty_labels'] for item in batch])
     direction_labels = torch.stack([item['direction_labels'] for item in batch])
-    pair_prompt_ids  = torch.stack([torch.tensor(item['pair_prompt_ids']) for item in batch])
-    relation_token_index  = [item['relation_token_index'] for item in batch]
-    direction_token_index = [item['direction_token_index'] for item in batch]
-    novelty_token_index   = [item['novelty_token_index'] for item in batch]
+    pair_prompt_ids  = torch.stack([item['pair_prompt_ids'] for item in batch])
+    relation_token_index  = torch.stack([item['relation_token_index'] for item in batch])
+    direction_token_index = torch.stack([item['direction_token_index'] for item in batch])
+    novelty_token_index   = torch.stack([item['novelty_token_index'] for item in batch])
 
     return {
         "pmid":                  pmid,
@@ -136,8 +138,9 @@ def run_inference(bioredirect_model,
     return pmid_2_rel_pairs_dict
     
 def run_inference_dir(in_bioredirect_model,
-                      in_bioc_xml_dir,
-                      out_bioc_xml_dir,
+                      format,
+                      in_data_dir,
+                      out_pred_data_dir,
                       re_id_spliter_str = r'[\;]',
                       normalized_ne_type_dict = {},
                       sections = '',
@@ -160,46 +163,53 @@ def run_inference_dir(in_bioredirect_model,
     tokenizer = BertTokenizer.from_pretrained(in_bioredirect_model)    
     bioredirect_model = BioREDirect.load_model(model_path = in_bioredirect_model)
     
-    _in_files = list(glob.glob(in_bioc_xml_dir + "/*.xml") + glob.glob(in_bioc_xml_dir + "/*.txt"))
+    _in_files = list(glob.glob(in_data_dir + "/*.xml") + glob.glob(in_data_dir + "/*.txt") + glob.glob(in_data_dir + "/*.pubtator"))
     random.seed(datetime.now().timestamp())
     random.shuffle(_in_files)
 
-    print(f'Found {_in_files} files in {in_bioc_xml_dir}')
-    logger.info(f'Found {_in_files} files in {in_bioc_xml_dir}')
+    print(f'Found {_in_files} files in {in_data_dir}')
+    logger.info(f'Found {_in_files} files in {in_data_dir}')
 
     len_in_files = len(_in_files)
     counter = 0
 
     try:
-        if not os.path.exists(in_bioc_xml_dir + '_processed'):
-            os.makedirs(in_bioc_xml_dir + '_processed')
+        if not os.path.exists(in_data_dir + '_processed'):
+            os.makedirs(in_data_dir + '_processed')
     except Exception as e:
-        if not os.path.exists(in_bioc_xml_dir + '_processed'):
-            print(f'Error creating directory {in_bioc_xml_dir + "_processed"}: {e}')
+        if not os.path.exists(in_data_dir + '_processed'):
+            print(f'Error creating directory {in_data_dir + "_processed"}: {e}')
 
     try:
-        if not os.path.exists(out_bioc_xml_dir):
-            os.makedirs(out_bioc_xml_dir)
+        if not os.path.exists(out_pred_data_dir):
+            os.makedirs(out_pred_data_dir)
     except Exception as e:
-        if not os.path.exists(out_bioc_xml_dir):
-            print(f'Error creating directory {out_bioc_xml_dir}: {e}')
+        if not os.path.exists(out_pred_data_dir):
+            print(f'Error creating directory {out_pred_data_dir}: {e}')
 
-    for in_test_xml_file in _in_files:
+    for in_test_data_file in _in_files:
         
-        file_name              = Path(in_test_xml_file).stem
-        in_bioc_xml_file       = in_bioc_xml_dir + '//' + file_name + '.txt'
-        in_test_tsv_file       = in_bioc_xml_dir + '_processed//' + file_name + '.tsv'
-        out_pred_bioc_xml_file = out_bioc_xml_dir + '//' + file_name + '.xml'
+        file_name          = Path(in_test_data_file).stem
+        in_data_file       = in_data_dir + '//' + Path(in_test_data_file).name
+        in_test_tsv_file   = in_data_dir + '_processed//' + file_name + '.tsv'
+        out_pred_data_file = out_pred_data_dir + '//' + Path(in_test_data_file).name
         
         
-        if not os.path.exists(in_bioc_xml_file):
-            in_bioc_xml_file = in_bioc_xml_dir + '//' + file_name + '.xml'
-            
-        documents = load_bioc_into_documents(
-            in_bioc_xml_file        = in_bioc_xml_file, 
-            re_id_spliter_str       = re_id_spliter_str,
-            normalized_ne_type_dict = normalized_ne_type_dict,
-            sections                = sections)
+        if os.path.exists(out_pred_data_file):
+            continue
+        
+        if format.lower() == 'bioc':
+            documents = load_bioc_into_documents(
+                in_bioc_xml_file        = in_data_file, 
+                re_id_spliter_str       = re_id_spliter_str,
+                normalized_ne_type_dict = normalized_ne_type_dict,
+                sections                = sections)
+        else:
+            documents = load_pubtator_into_documents(
+                in_pubtator_file        = in_data_file, 
+                re_id_spliter_str       = re_id_spliter_str,
+                normalized_ne_type_dict = normalized_ne_type_dict,
+                use_novelty_label       = True)
 
         split_documents(documents, tokenizer)
 
@@ -213,20 +223,24 @@ def run_inference_dir(in_bioredirect_model,
             if not os.path.exists(in_test_tsv_file):
                 with open(in_test_tsv_file, "w") as writer:
                     print(in_test_tsv_file, ' is empty')
-            if not os.path.exists(out_pred_bioc_xml_file):
+            if not os.path.exists(out_pred_data_file):
                 # copy the input file to output directory
-                os.system(f'cp {in_bioc_xml_file} {out_pred_bioc_xml_file}')
+                os.system(f'cp {in_data_file} {out_pred_data_file}')
             counter += 1
             continue
 
-        if not os.path.exists(out_pred_bioc_xml_file):
-            
+        if not os.path.exists(out_pred_data_file):
             
             test_dataset    = BioREDDataset(in_test_tsv_file,
                                             tokenizer,
                                             max_seq_len     = max_seq_len,
                                             soft_prompt_len = bioredirect_model.soft_prompt_len)
-            test_dataloader = DataLoader(test_dataset, batch_size = batch_size, collate_fn = custom_collate_fn)
+            
+            test_dataloader = DataLoader(test_dataset, 
+                                         batch_size = batch_size, 
+                                         collate_fn = custom_collate_fn,
+                                         num_workers = 10, 
+                                         pin_memory = (device.type == 'cuda'))
             
             pmid_2_rel_pairs_dict = run_inference(bioredirect_model = bioredirect_model,
                                                   tokenizer         = tokenizer,
@@ -234,25 +248,35 @@ def run_inference_dir(in_bioredirect_model,
                                                   test_dataloader   = test_dataloader,
                                                   device            = device)
             
-            dump_documents_2_xml_with_instance(
-                    in_xml_file  = in_bioc_xml_file,
-                    documents    = documents, 
-                    out_xml_file = out_pred_bioc_xml_file,
-                    pmid_2_rel_pair_dict = pmid_2_rel_pairs_dict)
+            if format.lower() == 'bioc':
+                dump_documents_2_xml_with_instance(
+                        in_xml_file  = in_data_file,
+                        documents    = documents, 
+                        out_xml_file = in_data_file,
+                        pmid_2_rel_pair_dict = pmid_2_rel_pairs_dict)
+            else:
+                dump_documents_2_pubtator3(
+                        in_data_file         = in_data_file,
+                        out_data_file        = out_pred_data_file,
+                        pmid_2_rel_pair_dict = pmid_2_rel_pairs_dict,
+                        re_id_spliter_str    = re_id_spliter_str)
         counter += 1
         if counter % 10 == 0:
             print(f'Processed {counter}/{len_in_files} {counter/len_in_files*100:.2f}% files')
             logger.info(f'Processed {counter}/{len_in_files} {counter/len_in_files*100:.2f}% files')
             
 if __name__ == '__main__':
+
+    torch.set_default_dtype(torch.float32)
     
     parser = argparse.ArgumentParser(description='Run Relation Extraction Experiment')
-    parser.add_argument('--in_bioredirect_model',      type=str, default='',  help='Output BERT model name')
-    parser.add_argument('--in_bioc_xml_dir',           type=str, default='',  help='Input BIOC XML directory')
-    parser.add_argument('--out_pred_bioc_dir',         type=str, default='',  help='Output BIOC XML directory')
-    parser.add_argument('--batch_size',                type=int, default=8,   help='Batch size')
-    parser.add_argument('--max_seq_len',               type=int, default=512, help='Maximum sequence length')
-    parser.add_argument('--sections',                  type=str, default='',  help='Sections to process separated by |')
+    parser.add_argument('--in_bioredirect_model', type=str, default='',  help='Output BERT model name')
+    parser.add_argument('--in_data_dir',          type=str, default='',  help='Input BIOC XML directory')
+    parser.add_argument('--out_pred_data_dir',    type=str, default='',  help='Output BIOC XML directory')
+    parser.add_argument('--batch_size',           type=int, default=8,   help='Batch size')
+    parser.add_argument('--max_seq_len',          type=int, default=512, help='Maximum sequence length')
+    parser.add_argument('--sections',             type=str, default='',  help='Sections to process separated by |')
+    parser.add_argument('--format',               type=str, default='bioc', choices=['bioc', 'pubtator'], help='Dataset format')
     
     args = parser.parse_args() 
 
@@ -270,8 +294,9 @@ if __name__ == '__main__':
     }
 
     run_inference_dir(in_bioredirect_model    = args.in_bioredirect_model,
-                      in_bioc_xml_dir         = args.in_bioc_xml_dir,
-                      out_bioc_xml_dir        = args.out_pred_bioc_dir,
+                      format                  = args.format,
+                      in_data_dir             = args.in_data_dir,
+                      out_pred_data_dir       = args.out_pred_data_dir,
                       normalized_ne_type_dict = normalized_ne_type_dict,
                       re_id_spliter_str       = r'[\;]',
                       max_seq_len             = args.max_seq_len,

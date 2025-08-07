@@ -1,7 +1,9 @@
 #!/bin/bash
 
-in_bioc_xml_dir="data"
-out_pred_bioc_dir="outputs"
+format="pubtator"
+#format="bioc"
+in_data_dir="data"
+out_pred_data_dir="outputs"
 #sections="ALL"
 sections="TITLE|ABSTRACT"
 
@@ -9,9 +11,10 @@ in_bert_model="bioredirect_biored_pt"
 
 echo "Running test prediction"
 cuda_visible_devices=0 python src/run_pubtator3_pred.py \
+    --format "${format}" \
     --in_bioredirect_model "${in_bert_model}" \
-    --in_bioc_xml_dir "${in_bioc_xml_dir}" \
-    --out_pred_bioc_dir "${out_pred_bioc_dir}" \
+    --in_data_dir "${in_data_dir}" \
+    --out_pred_data_dir "${out_pred_data_dir}" \
     --batch_size 8
 
 echo "Done"

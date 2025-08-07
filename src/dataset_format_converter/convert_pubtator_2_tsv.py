@@ -239,7 +239,8 @@ def gen_pubtator_2_tsv_dataset(
                 task              = task)
     else:
         
-        os.makedirs(os.path.dirname(out_tsv_file), exist_ok=True)
+        if os.path.dirname(out_tsv_file) != '':
+            os.makedirs(os.path.dirname(out_tsv_file), exist_ok=True)
         
         convert_pubtator_to_tsv_file(
             in_pubtator_file  = in_pubtator_file,

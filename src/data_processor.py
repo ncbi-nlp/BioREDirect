@@ -22,7 +22,8 @@ class BioREDDataset(Dataset):
                  ne_id2_col=4,
                  pair_cols=[1, 2],
                  novelty_label_col=-2,
-                 balance_ratio=-1):
+                 balance_ratio=-1,
+                 fast_inference=False):
 
         self.data = pd.read_csv(filename,
                                 sep='\t', 
@@ -47,6 +48,7 @@ class BioREDDataset(Dataset):
                                     ('GeneOrGeneProduct', 'GeneOrGeneProduct'),
                                     ('SequenceVariant', 'SequenceVariant')]
         self.ne_type_pair_2_id = {ne_type_pair: i for i, ne_type_pair in enumerate(self.considered_ne_pairs)}        
+        self.fast_inference = fast_inference
         
         if balance_ratio > 0:
             none_data = self.data[self.data.iloc[:, label_col] == 'None']
@@ -256,12 +258,12 @@ class BioREDDataset(Dataset):
 
             all_inputs['input_ids'].append(inputs['input_ids'])
             all_inputs['attention_mask'].append(inputs['attention_mask'])
-            all_inputs['entity1_indices'].append(inputs['entity1_indices'])
-            all_inputs['entity2_indices'].append(inputs['entity2_indices'])
-            all_inputs['entity1_sent_ids'].append(inputs['entity1_sent_ids'])
-            all_inputs['entity2_sent_ids'].append(inputs['entity2_sent_ids'])
+            #all_inputs['entity1_indices'].append(inputs['entity1_indices'])
+            #all_inputs['entity2_indices'].append(inputs['entity2_indices'])
+            #all_inputs['entity1_sent_ids'].append(inputs['entity1_sent_ids'])
+            #all_inputs['entity2_sent_ids'].append(inputs['entity2_sent_ids'])
             all_inputs['pair_prompt_ids'].append(inputs['pair_prompt_ids'])
-            all_inputs['sent_ids'].append(inputs['sent_ids'])
+            #all_inputs['sent_ids'].append(inputs['sent_ids'])
 
     def __getitem__(self, idx):
 
@@ -278,12 +280,12 @@ class BioREDDataset(Dataset):
         all_inputs = {
             "input_ids": [],
             "attention_mask": [],
-            "entity1_indices": [],
-            "entity2_indices": [],
-            "entity1_sent_ids": [],
-            "entity2_sent_ids": [],
+            #"entity1_indices": [],
+            #"entity2_indices": [],
+            #"entity1_sent_ids": [],
+            #"entity2_sent_ids": [],
             "pair_prompt_ids": [],
-            "sent_ids": []
+            #"sent_ids": []
         }
 
         content = {
@@ -318,9 +320,12 @@ class BioREDDataset(Dataset):
         if len(infix_chunks) == 0:
             infix_chunks.append(suffix_chunk)
         
-        self.__add_chunks_to_inputs__(all_inputs, [prefix_chunk], content["instruction_tokens"], entity_pair)
-        self.__add_chunks_to_inputs__(all_inputs, [suffix_chunk], content["instruction_tokens"], entity_pair)
-        self.__add_chunks_to_inputs__(all_inputs, [infix_chunks[0]],  content["instruction_tokens"], entity_pair) # Maintain Biorex2's effectiveness by dealing with the first chunk
+        if self.fast_inference:
+            self.__add_chunks_to_inputs__(all_inputs, [infix_chunks[0]],  content["instruction_tokens"], entity_pair) # Maintain Biorex2's effectiveness by dealing with the first chunk
+        else:
+            self.__add_chunks_to_inputs__(all_inputs, [prefix_chunk], content["instruction_tokens"], entity_pair)
+            self.__add_chunks_to_inputs__(all_inputs, [suffix_chunk], content["instruction_tokens"], entity_pair)
+            self.__add_chunks_to_inputs__(all_inputs, [infix_chunks[0]],  content["instruction_tokens"], entity_pair) # Maintain Biorex2's effectiveness by dealing with the first chunk
 
         label = self.data.iloc[idx, self.label_col]
         #print('============>', self.label_col)
@@ -354,8 +359,8 @@ class BioREDDataset(Dataset):
         #all_entity2_sent_ids = all_entity2_sent_ids
         #all_pair_prompt_ids = all_pair_prompt_ids
         return {"pmid": pmid,
-                "input_ids": all_inputs['input_ids'], 
-                "attention_mask": all_inputs['attention_mask'],
+                "input_ids": torch.tensor(all_inputs['input_ids']), 
+                "attention_mask": torch.tensor(all_inputs['attention_mask']),
                 "labels": torch.tensor(label_ids, dtype=torch.float),
                 "relation_labels": torch.tensor(relation_label_ids, dtype=torch.float),
                 "novelty_labels": torch.tensor(novelty_label_ids, dtype=torch.float),
@@ -363,12 +368,13 @@ class BioREDDataset(Dataset):
                 "relation_token_index": torch.tensor(relation_token_index, dtype=torch.long),
                 "direction_token_index": torch.tensor(direction_token_index, dtype=torch.long),
                 "novelty_token_index": torch.tensor(novelty_token_index, dtype=torch.long),
-                "entity1_indices": all_inputs['entity1_indices'],
-                "entity2_indices": all_inputs['entity2_indices'],
-                "entity1_sent_ids": all_inputs['entity1_sent_ids'],
-                "entity2_sent_ids": all_inputs['entity2_sent_ids'],
-                "pair_prompt_ids": all_inputs['pair_prompt_ids'],
-                "sent_ids": all_inputs['sent_ids']}
+                #"entity1_indices": all_inputs['entity1_indices'],
+                #"entity2_indices": all_inputs['entity2_indices'],
+                #"entity1_sent_ids": all_inputs['entity1_sent_ids'],
+                #"entity2_sent_ids": all_inputs['entity2_sent_ids'],
+                "pair_prompt_ids": torch.tensor(all_inputs['pair_prompt_ids']),
+                #"sent_ids": all_inputs['sent_ids']
+                }
     
     def get_label_2_id(self, task):
         return {label: i for i, label in enumerate(self.get_labels(task))}

@@ -140,16 +140,10 @@ def add_relation_pairs_dict(
             pmid_2_rel_pairs_dict[sindex] = set()
             #print(sindex)
         if rel_label != 'None':
-            #if sindex == '27784654':
-            #    print(_counter, id1, id2, rel_label, max_rel_score, nov_label, max_pos_nov_score, dir_label, max_pos_dir_score)
             pmid_2_rel_pairs_dict[sindex].add(RelInfo(id1, id2, 
                                                     rel_label, max_rel_score, 
                                                     nov_label, max_pos_nov_score, 
                                                     dir_label, max_pos_dir_score))
-        if sindex == '34368951' and id1 == 'D010710' and id2 == 'D002114':
-            print(rel_label, max_rel_score, index, id1, id2, pred)
-        elif sindex == '34368951' and id1 == 'D002114' and id2 == 'D010710':
-            print(rel_label, max_rel_score, index, id1, id2, pred)
         _counter += 1
             
 def dump_pred_2_pubtator_file(in_test_pubtator_file, 
@@ -179,14 +173,10 @@ def dump_pred_2_pubtator_file(in_test_pubtator_file,
             line = line.rstrip()
             
             if line == '':
-                #print('len(pmid_2_rel_pairs_dict)', len(pmid_2_rel_pairs_dict))
-                #print('len(pmid_2_rel_pairs_dict[pmid])', len(pmid_2_rel_pairs_dict[pmid]))
                 
                 if pmid in pmid_2_rel_pairs_dict:
-                    #print('len(pmid_2_rel_pairs_dict[pmid])', len(pmid_2_rel_pairs_dict[pmid]))
                     for rel in pmid_2_rel_pairs_dict[pmid]:
-                        #if pmid == '27784654':
-                        #    print(rel.id1, rel.id2, rel.rel_label, rel.rel_score, rel.nov_label, rel.nov_score, rel.dir_label, rel.dir_score)
+                        
                         id1 = rel.id1
                         id2 = rel.id2
 

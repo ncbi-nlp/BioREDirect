@@ -20,21 +20,21 @@ logger = logging.getLogger(__name__)
 
 def custom_collate_fn(batch):
     pmid = [item['pmid'] for item in batch]
-    input_ids = torch.stack([torch.tensor(item['input_ids']) for item in batch])
-    attention_mask = torch.stack([torch.tensor(item['attention_mask']) for item in batch])
+    input_ids = torch.stack([item['input_ids'] for item in batch])
+    attention_mask = torch.stack([item['attention_mask'] for item in batch])
     #labels = torch.stack([item['labels'] for item in batch])
     relation_labels = torch.stack([item['relation_labels'] for item in batch])
     novelty_labels = torch.stack([item['novelty_labels'] for item in batch])
     direction_labels = torch.stack([item['direction_labels'] for item in batch])
-    entity1_indices = [item['entity1_indices'] for item in batch]
-    entity2_indices = [item['entity2_indices'] for item in batch]
-    entity1_sent_ids = [item['entity1_sent_ids'] for item in batch]
-    entity2_sent_ids = [item['entity2_sent_ids'] for item in batch]
-    pair_prompt_ids = torch.stack([torch.tensor(item['pair_prompt_ids']) for item in batch])
-    sent_ids        = [item['sent_ids'] for item in batch]
-    relation_token_index = [item['relation_token_index'] for item in batch]
-    direction_token_index = [item['direction_token_index'] for item in batch]
-    novelty_token_index = [item['novelty_token_index'] for item in batch]
+    #entity1_indices = [item['entity1_indices'] for item in batch]
+    #entity2_indices = [item['entity2_indices'] for item in batch]
+    #entity1_sent_ids = [item['entity1_sent_ids'] for item in batch]
+    #entity2_sent_ids = [item['entity2_sent_ids'] for item in batch]
+    pair_prompt_ids = torch.stack([item['pair_prompt_ids'] for item in batch])
+    #sent_ids        = [item['sent_ids'] for item in batch]
+    relation_token_index =  torch.stack([item['relation_token_index'] for item in batch])
+    direction_token_index =  torch.stack([item['direction_token_index'] for item in batch])
+    novelty_token_index =  torch.stack([item['novelty_token_index'] for item in batch])
     #print('===============>len(entity2_sent_ids)', len(entity2_sent_ids))
 
     return {
@@ -45,12 +45,12 @@ def custom_collate_fn(batch):
         "relation_labels": relation_labels,
         "novelty_labels": novelty_labels,
         "direction_labels": direction_labels,
-        "entity1_indices": entity1_indices,
-        "entity2_indices": entity2_indices,
-        "entity1_sent_ids": entity1_sent_ids,
-        "entity2_sent_ids": entity2_sent_ids,
+        #"entity1_indices": entity1_indices,
+        #"entity2_indices": entity2_indices,
+        #"entity1_sent_ids": entity1_sent_ids,
+        #"entity2_sent_ids": entity2_sent_ids,
         "pair_prompt_ids": pair_prompt_ids,
-        "sent_ids": sent_ids,        
+        #"sent_ids": sent_ids,        
         "relation_token_index": relation_token_index,
         "direction_token_index": direction_token_index,
         "novelty_token_index": novelty_token_index,
@@ -159,12 +159,12 @@ def run_train(in_bert_model,
              pred_nov_logits, 
              pred_dir_logits) = bioredirect_model(input_ids             = batch['input_ids'].to(device), 
                                                   attention_mask        = batch['attention_mask'].to(device),
-                                                  entity1_indices       = batch['entity1_indices'],
-                                                  entity2_indices       = batch['entity2_indices'],
-                                                  entity1_sent_ids      = batch['entity1_sent_ids'],
-                                                  entity2_sent_ids      = batch['entity2_sent_ids'],
+                                                  #entity1_indices       = batch['entity1_indices'],
+                                                  #entity2_indices       = batch['entity2_indices'],
+                                                  #entity1_sent_ids      = batch['entity1_sent_ids'],
+                                                  #entity2_sent_ids      = batch['entity2_sent_ids'],
                                                   pair_prompt_ids       = batch['pair_prompt_ids'].to(device),
-                                                  sent_ids              = batch['sent_ids'],
+                                                  #sent_ids              = batch['sent_ids'],
                                                   relation_token_index  = batch['relation_token_index'],
                                                   direction_token_index = batch['direction_token_index'],
                                                   novelty_token_index   = batch['novelty_token_index'])
@@ -284,10 +284,11 @@ def run_inference(in_bioredirect_model,
             
     none_label_index  = test_dataset.get_label_2_id('relation')['None'] # 'None' label index is the same for all tasks
 
-    test_dataloader   = DataLoader(test_dataset, batch_size = batch_size, collate_fn = custom_collate_fn)
-
-    
-
+    test_dataloader   = DataLoader(test_dataset, 
+                                   batch_size  = batch_size, 
+                                   collate_fn  = custom_collate_fn,
+                                   num_workers = 4, 
+                                   pin_memory = (device.type == 'cuda'))
     if task_name == 'biored':
         test_out_dict = evaluate_biored_f1_score(bioredirect_model, 
                                                  test_dataloader, 
@@ -354,6 +355,7 @@ if __name__ == '__main__':
     set_seed(seed_value)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    torch.set_default_dtype(torch.float32)
 
     in_bert_model         = args.in_bert_model
     out_bioredirect_model = args.out_bioredirect_model
@@ -368,6 +370,7 @@ if __name__ == '__main__':
     is_multi_label        = args.is_multi_label
     balance_ratio         = args.balance_ratio
     no_eval               = args.no_eval
+    fast_inference        = args.fast_inference
 
     print('================>args.no_eval', args.no_eval)
 
