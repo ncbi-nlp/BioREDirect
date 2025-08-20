@@ -72,15 +72,16 @@ def run_train(in_bert_model,
               in_train_tsv_file,
               in_dev_tsv_file,
               out_bioredirect_model, 
-              soft_prompt_len = 5,
-              num_epochs      = 10,
-              batch_size      = 16,
-              max_seq_len     = 512,
-              neg_loss_weight = 0.5,
-              learning_rate   = 1e-5,
-              task_name       = 'biored',
-              seed_value      = 1111,
-              balance_ratio   = -1):
+              soft_prompt_len  = 5,
+              num_epochs       = 10,
+              batch_size       = 16,
+              max_seq_len      = 512,
+              neg_loss_weight  = 0.5,
+              learning_rate    = 1e-5,
+              task_name        = 'biored',
+              seed_value       = 1111,
+              balance_ratio    = -1,
+              use_single_chunk = False):
         
     # Define device: use GPU if available, else use CPU
     if torch.backends.mps.is_available():
@@ -96,16 +97,10 @@ def run_train(in_bert_model,
     # Initialize datasets
     train_dataset = dataset_processor(in_train_tsv_file,
                                       tokenizer,
-                                      max_seq_len     = max_seq_len,
-                                      soft_prompt_len = soft_prompt_len,
-                                      balance_ratio   = balance_ratio)
-    
-    none_label_index = train_dataset.get_label_2_id('relation')['None'] # 'None' label index is the same for all tasks
-
-    num_relation_labels  = len(train_dataset.get_labels('relation'))
-    num_novelty_labels   = len(train_dataset.get_labels('novelty'))
-    num_direction_labels = len(train_dataset.get_labels('direction'))
-
+                                      max_seq_len      = max_seq_len,
+                                      soft_prompt_len  = soft_prompt_len,
+                                      balance_ratio    = balance_ratio,
+                                      use_single_chunk = use_single_chunk)
     # Create DataLoaders
     none_label_index = train_dataset.get_label_2_id('relation')['None']
     train_dataloader = DataLoader(train_dataset, 
@@ -118,8 +113,10 @@ def run_train(in_bert_model,
     if in_dev_tsv_file != '':
         dev_dataset    = dataset_processor(in_dev_tsv_file,
                                            tokenizer,
-                                           max_seq_len     = max_seq_len,
-                                           soft_prompt_len = soft_prompt_len)
+                                           max_seq_len      = max_seq_len,
+                                           soft_prompt_len  = soft_prompt_len,
+                                           use_single_chunk = use_single_chunk)
+        
         dev_dataloader = DataLoader(dev_dataset,   
                                     batch_size  = batch_size, 
                                     collate_fn  = custom_collate_fn,
@@ -129,12 +126,13 @@ def run_train(in_bert_model,
         dev_dataloader = None
         
     # Instantiate the modified modelbert_model,     
-    bioredirect_model = BioREDirect(in_bert_model = in_bert_model, 
+    bioredirect_model = BioREDirect(in_bert_model   = in_bert_model, 
                                     soft_prompt_len = soft_prompt_len,
                                     relation_label_to_id  = train_dataset.get_label_2_id('relation'),
                                     novelty_label_to_id   = train_dataset.get_label_2_id('novelty'),
                                     direction_label_to_id = train_dataset.get_label_2_id('direction'),
-                                    num_soft_prompt = 20)
+                                    num_soft_prompt       = 20,
+                                    use_single_chunk      = use_single_chunk,)
     bioredirect_model.resize_token_embeddings(len(tokenizer))
     bioredirect_model.to(device)
     optimizer = torch.optim.AdamW(bioredirect_model.parameters(), lr=learning_rate)
@@ -275,7 +273,8 @@ def run_inference(in_bioredirect_model,
                   batch_size  = 16,
                   max_seq_len = 512,
                   task_name   = 'biored',
-                  no_eval     = False):
+                  no_eval     = False,
+                  use_single_chunk = False):
     
     # Define device: use GPU if available, else use CPU
     if torch.backends.mps.is_available():
@@ -288,8 +287,9 @@ def run_inference(in_bioredirect_model,
     dataset_processor = BioREDDataset if task_name == 'biored' else CDRDataset
     test_dataset      = dataset_processor(in_test_tsv_file,
                                           tokenizer,
-                                          max_seq_len     = max_seq_len,
-                                          soft_prompt_len = bioredirect_model.soft_prompt_len)
+                                          max_seq_len      = max_seq_len,
+                                          soft_prompt_len  = bioredirect_model.soft_prompt_len,
+                                          use_single_chunk = use_single_chunk)
             
     none_label_index  = test_dataset.get_label_2_id('relation')['None'] # 'None' label index is the same for all tasks
 
@@ -353,6 +353,7 @@ if __name__ == '__main__':
     parser.add_argument('--is_multi_label', type=bool, default=False, help='Is multi-label')
     parser.add_argument('--balance_ratio', type=float, default=-1, help='Balance ratio')
     parser.add_argument('--no_eval', type=bool, default=False, help='No evaluation')
+    parser.add_argument('--use_single_chunk', type=bool, default=False, help='Use single chunk for training')
 
     args = parser.parse_args() 
 
@@ -379,6 +380,7 @@ if __name__ == '__main__':
     is_multi_label        = args.is_multi_label
     balance_ratio         = args.balance_ratio
     no_eval               = args.no_eval
+    use_single_chunk      = args.use_single_chunk
 
     print('================>args.no_eval', args.no_eval)
 
@@ -395,15 +397,17 @@ if __name__ == '__main__':
                   learning_rate         = learning_rate,
                   task_name             = task_name,
                   seed_value            = seed_value,
-                  balance_ratio         = balance_ratio)
+                  balance_ratio         = balance_ratio,
+                  use_single_chunk      = use_single_chunk)
     
     if args.in_test_tsv_file != '':
         run_inference(in_bioredirect_model  = args.in_bioredirect_model if args.in_bioredirect_model != '' else args.out_bioredirect_model,
                       in_test_tsv_file      = args.in_test_tsv_file,
                       out_pred_tsv_file     = args.out_pred_tsv_file,
-                      soft_prompt_len = soft_prompt_len,
-                      num_epochs      = num_epochs,
-                      batch_size      = batch_size,
-                      max_seq_len     = max_seq_len,
-                      task_name       = task_name,
-                      no_eval         = no_eval)
+                      soft_prompt_len  = soft_prompt_len,
+                      num_epochs       = num_epochs,
+                      batch_size       = batch_size,
+                      max_seq_len      = max_seq_len,
+                      task_name        = task_name,
+                      no_eval          = no_eval,
+                      use_single_chunk = use_single_chunk)

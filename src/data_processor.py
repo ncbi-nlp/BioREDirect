@@ -23,7 +23,7 @@ class BioREDDataset(Dataset):
                  pair_cols=[1, 2],
                  novelty_label_col=-2,
                  balance_ratio=-1,
-                 fast_inference=False):
+                 use_single_chunk=False):
 
         self.data = pd.read_csv(filename,
                                 sep='\t', 
@@ -48,7 +48,7 @@ class BioREDDataset(Dataset):
                                     ('GeneOrGeneProduct', 'GeneOrGeneProduct'),
                                     ('SequenceVariant', 'SequenceVariant')]
         self.ne_type_pair_2_id = {ne_type_pair: i for i, ne_type_pair in enumerate(self.considered_ne_pairs)}        
-        self.fast_inference = fast_inference
+        self.use_single_chunk = use_single_chunk
         
         if balance_ratio > 0:
             none_data = self.data[self.data.iloc[:, label_col] == 'None']
@@ -315,14 +315,20 @@ class BioREDDataset(Dataset):
         '''
         segment text into chunks if text is longer than max_length
         '''
-        prefix_chunk, suffix_chunk = self.__get_prefix_and_suffix_chunks__(content, max_content_size)
-        infix_chunks               = self.__get_closest_chunks__(content, max_content_size)
-        if len(infix_chunks) == 0:
-            infix_chunks.append(suffix_chunk)
-        
-        if self.fast_inference:
-            self.__add_chunks_to_inputs__(all_inputs, [infix_chunks[0]],  content["instruction_tokens"], entity_pair) # Maintain Biorex2's effectiveness by dealing with the first chunk
+        if self.use_single_chunk:
+            prefix_chunk, suffix_chunk = self.__get_prefix_and_suffix_chunks__(content, max_content_size)
+            if len(content["text_tokens"]) >= max_content_size:
+                infix_chunks = self.__get_closest_chunks__(content, max_content_size)
+                if len(infix_chunks) == 0:
+                    infix_chunks.append(suffix_chunk)
+                self.__add_chunks_to_inputs__(all_inputs, [infix_chunks[0]], content["instruction_tokens"], entity_pair) # Maintain Biorex2's effectiveness by dealing with the first chunk
+            else:
+                self.__add_chunks_to_inputs__(all_inputs, [prefix_chunk], content["instruction_tokens"], entity_pair)
         else:
+            prefix_chunk, suffix_chunk = self.__get_prefix_and_suffix_chunks__(content, max_content_size)
+            infix_chunks               = self.__get_closest_chunks__(content, max_content_size)
+            if len(infix_chunks) == 0:
+                infix_chunks.append(suffix_chunk)
             self.__add_chunks_to_inputs__(all_inputs, [prefix_chunk], content["instruction_tokens"], entity_pair)
             self.__add_chunks_to_inputs__(all_inputs, [suffix_chunk], content["instruction_tokens"], entity_pair)
             self.__add_chunks_to_inputs__(all_inputs, [infix_chunks[0]],  content["instruction_tokens"], entity_pair) # Maintain Biorex2's effectiveness by dealing with the first chunk

@@ -55,7 +55,8 @@ class BioREDirect(nn.Module):
                  direction_label_to_id = None,
                  soft_prompt_len       = 0,
                  num_soft_prompt       = 1,
-                 hidden_size           = 768,):
+                 hidden_size           = 768,
+                 use_single_chunk      = False):
         
         super(BioREDirect, self).__init__()
 
@@ -93,6 +94,7 @@ class BioREDirect(nn.Module):
         self.novelty_label_to_id   = novelty_label_to_id
         self.direction_label_to_id = direction_label_to_id
         self.hidden_size           = hidden_size
+        self.use_single_chunk      = use_single_chunk
 
     def get_ne_reps(self, 
                     sequence_output, 
@@ -147,18 +149,40 @@ class BioREDirect(nn.Module):
             all_token_reps.append(_sequence_output[special_token_index].clone().detach())
         return all_token_reps
 
-    '''def forward(self, 
-                input_ids, 
-                attention_mask        = None, 
-                #entity1_indices       = None,
-                #entity2_indices       = None,
-                #entity1_sent_ids      = None,
-                #entity2_sent_ids      = None,
+    def forward(self, 
+                input_ids,
+                attention_mask        = None,
                 pair_prompt_ids       = None,
-                #sent_ids              = None,
                 relation_token_index  = None,
                 direction_token_index = None,
                 novelty_token_index   = None):
+        
+        if self.use_single_chunk:
+            rel_token_logits, nov_token_logits, dir_token_logits = self.__single_chunk_forward(
+                input_ids, 
+                attention_mask, 
+                pair_prompt_ids, 
+                relation_token_index, 
+                direction_token_index, 
+                novelty_token_index)
+        else:
+            rel_token_logits, nov_token_logits, dir_token_logits = self.__multi_chunk_forward(
+                input_ids, 
+                attention_mask, 
+                pair_prompt_ids, 
+                relation_token_index, 
+                direction_token_index, 
+                novelty_token_index)
+        
+        return rel_token_logits, nov_token_logits, dir_token_logits
+
+    def __single_chunk_forward(self, 
+                               input_ids, 
+                               attention_mask        = None, 
+                               pair_prompt_ids       = None,
+                               relation_token_index  = None,
+                               direction_token_index = None,
+                               novelty_token_index   = None):
         
         batch_size = len(input_ids)
         rel_token_logits = []
@@ -218,15 +242,15 @@ class BioREDirect(nn.Module):
         rel_token_logits = torch.stack(rel_token_logits)
         nov_token_logits = torch.stack(nov_token_logits)
         dir_token_logits = torch.stack(dir_token_logits)
-        return rel_token_logits, nov_token_logits, dir_token_logits'''
+        return rel_token_logits, nov_token_logits, dir_token_logits
     
-    def forward(self, 
-                input_ids, 
-                attention_mask        = None, 
-                pair_prompt_ids       = None,
-                relation_token_index  = None,
-                direction_token_index = None,
-                novelty_token_index   = None):
+    def __multi_chunk_forward(self, 
+                              input_ids, 
+                              attention_mask        = None, 
+                              pair_prompt_ids       = None,
+                              relation_token_index  = None,
+                              direction_token_index = None,
+                              novelty_token_index   = None):
 
         batch_size, num_chunks, seq_len = input_ids.size()
         input_ids = input_ids.view(-1, seq_len)            # (B*3, T)
@@ -294,7 +318,8 @@ class BioREDirect(nn.Module):
             'direction_label_to_id': self.direction_label_to_id,
             'soft_prompt_len': self.soft_prompt_len,
             'num_soft_prompt': self.num_soft_prompt,
-            'hidden_size': self.hidden_size
+            'hidden_size': self.hidden_size,
+            'use_single_chunk': self.use_single_chunk
         }
 
         # Add any extra info you might need for later
@@ -333,6 +358,7 @@ class BioREDirect(nn.Module):
             novelty_label_to_id   = saved_data['novelty_label_to_id'],
             direction_label_to_id = saved_data['direction_label_to_id'],
             hidden_size           = saved_data['hidden_size']
+            use_single_chunk      = saved_data['use_single_chunk'] if 'soft_prompt_len' in saved_data else False
         ).to(device)
 
         model.load_state_dict(saved_data['state_dict'])        
