@@ -18,27 +18,26 @@ class HiddenTokenPooler(nn.Module):
         self.activation = nn.Tanh()
 
     def forward(self, hidden_states, token_index=0):
-        # hidden_states: (B, N, T, H)
-        # token_index: int or (B,) or (B, 1)
-        B, N, T, H = hidden_states.shape
+        if hidden_states.dim() == 4:
+                
+            # hidden_states: (B, N, T, H)
+            B, N, T, H = hidden_states.shape
 
-        # 處理 token_index 的型別與 shape
-        if isinstance(token_index, int):
-            token_index = torch.full((B,), token_index, dtype=torch.long, device=hidden_states.device)
-        elif isinstance(token_index, list):
-            token_index = torch.tensor(token_index, dtype=torch.long, device=hidden_states.device)
-        elif token_index.dim() == 2 and token_index.size(1) == 1:
-            token_index = token_index.squeeze(1)
+            if isinstance(token_index, int):
+                token_index = torch.full((B,), token_index, dtype=torch.long, device=hidden_states.device)
+            elif isinstance(token_index, list):
+                token_index = torch.tensor(token_index, dtype=torch.long, device=hidden_states.device)
+            elif token_index.dim() == 2 and token_index.size(1) == 1:
+                token_index = token_index.squeeze(1)
 
-        # token_index: (B,) → (B, N) 重複每個句子
-        token_index = token_index.unsqueeze(1).expand(B, N)  # (B, N)
+            token_index = token_index.unsqueeze(1).expand(B, N)  # (B, N)
 
-        # 構造 batch 和句子 index
-        batch_idx = torch.arange(B, device=hidden_states.device).unsqueeze(1).expand(B, N)  # (B, N)
-        sent_idx  = torch.arange(N, device=hidden_states.device).unsqueeze(0).expand(B, N)  # (B, N)
+            batch_idx = torch.arange(B, device=hidden_states.device).unsqueeze(1).expand(B, N)  # (B, N)
+            sent_idx  = torch.arange(N, device=hidden_states.device).unsqueeze(0).expand(B, N)  # (B, N)
 
-        # 選出指定位置的 token embedding → (B, N, H)
-        token_hidden_state = hidden_states[batch_idx, sent_idx, token_index]  # (B, N, H)
+            token_hidden_state = hidden_states[batch_idx, sent_idx, token_index]  # (B, N, H)
+        else:
+            token_hidden_state = hidden_states[:, token_index, :]
 
         # dense + tanh
         dense_output = self.dense(token_hidden_state)  # (B, N, H)
@@ -222,14 +221,14 @@ class BioREDirect(nn.Module):
             pooled_novelty_token_output   = self.nov_token_poolor(sequence_output, _novelty_token_index) if self.nov_token_poolor else None
 
             # use max
-            #max_pooled_rel_token_output, _ = torch.max(pooled_relation_token_output, dim=0)
-            #max_pooled_dir_token_output, _ = torch.max(pooled_direction_token_output, dim=0) if pooled_direction_token_output is not None else (None, None)
-            #max_pooled_nov_token_output, _ = torch.max(pooled_novelty_token_output, dim=0) if pooled_novelty_token_output is not None else (None, None)
+            max_pooled_rel_token_output, _ = torch.max(pooled_relation_token_output, dim=0)
+            max_pooled_dir_token_output, _ = torch.max(pooled_direction_token_output, dim=0) if pooled_direction_token_output is not None else (None, None)
+            max_pooled_nov_token_output, _ = torch.max(pooled_novelty_token_output, dim=0) if pooled_novelty_token_output is not None else (None, None)
 
             # use attention   
-            max_pooled_rel_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_relation_token_output, pooled_relation_token_output.transpose(-1, -2)), dim=-1), pooled_relation_token_output)[0]
-            max_pooled_dir_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_direction_token_output, pooled_direction_token_output.transpose(-1, -2)), dim=-1), pooled_direction_token_output)[0] if pooled_direction_token_output is not None else None
-            max_pooled_nov_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_novelty_token_output, pooled_novelty_token_output.transpose(-1, -2)), dim=-1), pooled_novelty_token_output)[0] if pooled_novelty_token_output is not None else None
+            #max_pooled_rel_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_relation_token_output, pooled_relation_token_output.transpose(-1, -2)), dim=-1), pooled_relation_token_output)[0]
+            #max_pooled_dir_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_direction_token_output, pooled_direction_token_output.transpose(-1, -2)), dim=-1), pooled_direction_token_output)[0] if pooled_direction_token_output is not None else None
+            #max_pooled_nov_token_output = torch.matmul(torch.softmax(torch.matmul(pooled_novelty_token_output, pooled_novelty_token_output.transpose(-1, -2)), dim=-1), pooled_novelty_token_output)[0] if pooled_novelty_token_output is not None else None
 
             _rel_token_logits  = self.rel_token_classifier(max_pooled_rel_token_output)
             _dir_token_logits  = self.dir_token_classifier(max_pooled_dir_token_output) if pooled_direction_token_output is not None else None
@@ -357,7 +356,7 @@ class BioREDirect(nn.Module):
             relation_label_to_id  = saved_data['relation_label_to_id'],
             novelty_label_to_id   = saved_data['novelty_label_to_id'],
             direction_label_to_id = saved_data['direction_label_to_id'],
-            hidden_size           = saved_data['hidden_size']
+            hidden_size           = saved_data['hidden_size'],
             use_single_chunk      = saved_data['use_single_chunk'] if 'use_single_chunk' in saved_data else use_single_chunk
         ).to(device)
 
