@@ -145,7 +145,8 @@ def run_inference_dir(in_bioredirect_model,
                       normalized_ne_type_dict = {},
                       sections = '',
                       batch_size  = 16,
-                      max_seq_len = 512):
+                      max_seq_len = 512,
+                      use_single_chunk = False):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
@@ -161,7 +162,7 @@ def run_inference_dir(in_bioredirect_model,
         ('Chemical', 'Disease')])
     
     tokenizer = BertTokenizer.from_pretrained(in_bioredirect_model)    
-    bioredirect_model = BioREDirect.load_model(model_path = in_bioredirect_model)
+    bioredirect_model = BioREDirect.load_model(model_path = in_bioredirect_model, use_single_chunk = use_single_chunk)
     
     _in_files = list(glob.glob(in_data_dir + "/*.xml") + glob.glob(in_data_dir + "/*.txt") + glob.glob(in_data_dir + "/*.pubtator"))
     random.seed(datetime.now().timestamp())
@@ -234,7 +235,8 @@ def run_inference_dir(in_bioredirect_model,
             test_dataset    = BioREDDataset(in_test_tsv_file,
                                             tokenizer,
                                             max_seq_len     = max_seq_len,
-                                            soft_prompt_len = bioredirect_model.soft_prompt_len)
+                                            soft_prompt_len = bioredirect_model.soft_prompt_len,
+                                            use_single_chunk = use_single_chunk,)
             
             test_dataloader = DataLoader(test_dataset, 
                                          batch_size = batch_size, 
@@ -277,7 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_seq_len',          type=int, default=512, help='Maximum sequence length')
     parser.add_argument('--sections',             type=str, default='',  help='Sections to process separated by |')
     parser.add_argument('--format',               type=str, default='bioc', choices=['bioc', 'pubtator'], help='Dataset format')
-    
+    parser.add_argument('--use_single_chunk',     type=bool, default=False, help='Use single chunk for training')
     args = parser.parse_args() 
 
     normalized_ne_type_dict = {
@@ -300,4 +302,6 @@ if __name__ == '__main__':
                       normalized_ne_type_dict = normalized_ne_type_dict,
                       re_id_spliter_str       = r'[\;]',
                       max_seq_len             = args.max_seq_len,
-                      batch_size              = args.batch_size,)
+                      batch_size              = args.batch_size,
+                      sections                = args.sections,
+                      use_single_chunk        = args.use_single_chunk)

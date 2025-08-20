@@ -333,7 +333,7 @@ class BioREDirect(nn.Module):
         print(f"Model saved to {save_path}")
 
     @classmethod
-    def load_model(cls, model_path):
+    def load_model(cls, model_path, use_single_chunk=False):
         """Loads the BioREDirect model and its state from a saved file."""
 
         if torch.backends.mps.is_available():
@@ -358,7 +358,7 @@ class BioREDirect(nn.Module):
             novelty_label_to_id   = saved_data['novelty_label_to_id'],
             direction_label_to_id = saved_data['direction_label_to_id'],
             hidden_size           = saved_data['hidden_size']
-            use_single_chunk      = saved_data['use_single_chunk'] if 'soft_prompt_len' in saved_data else False
+            use_single_chunk      = saved_data['use_single_chunk'] if 'use_single_chunk' in saved_data else use_single_chunk
         ).to(device)
 
         model.load_state_dict(saved_data['state_dict'])        
