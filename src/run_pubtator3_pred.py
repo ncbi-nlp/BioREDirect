@@ -254,7 +254,7 @@ def run_inference_dir(in_bioredirect_model,
                 dump_documents_2_xml_with_instance(
                         in_xml_file  = in_data_file,
                         documents    = documents, 
-                        out_xml_file = in_data_file,
+                        out_xml_file = out_pred_data_file,
                         pmid_2_rel_pair_dict = pmid_2_rel_pairs_dict)
             else:
                 dump_documents_2_pubtator3(
